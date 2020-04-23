@@ -39,13 +39,14 @@ GLUI_Panel      *obj_panel;
 int main_window;
 
 char texto[30];
-GLfloat win, r, g, b,xf,zf;
+GLfloat win, r, g, b, xf,zf;
+GLfloat coord[10][2];
 GLint view_w, view_h, primitiva;
-int nx=50,nz=50,np;
+int nx=50,nz=40,np;
 float x0=0;
 float xn=100;
 float z0=0;
-float zn=100;
+float zn=80;
 double dx,dz;
 double *x,*z,*xv,*zv;
 double xvp,zvp;//coordenada do vertice mais proximo ao clique do usuario
@@ -53,7 +54,7 @@ double dist,aux_dist;
 int *click_xv, *click_zv;
 int cont,ic,i,j;
 double *polygon[2];
-int prim,click;
+int prim,click=0;
 int menu;
 int tx, ty, tw, th;
 void myGlutIdle()
@@ -93,7 +94,9 @@ void DesenhaPontos(void)
     }
   }
   i=0;
-
+  float tw1=tw-xn,th1=th-zn;
+  float lixo=tw1/2;//(x[nx-1]-x[0])*tw1/200;
+  float lixo2=th1/2;//(z[nz-1]-z[0])*tw1/160;
   glPointSize(3);
   glBegin(GL_POINTS);
   for (cont=0;cont<np;cont++)
@@ -108,34 +111,29 @@ void DesenhaPontos(void)
       {
           glColor3f(0,0,0);
       }
-        glVertex2f(xv[cont]-xn/2,zv[ic]-zn/2);
+        glVertex2f((xv[cont])*tw1/x[nx-1]-lixo,zv[ic]*th1/z[nz-1]-lixo2);
+        // printf("%f %f\n",xv[cont]-tw1/2,zv[ic]+th1/2);
+    }
+  }
+  glEnd();
+  glBegin(GL_LINES);
+  for (cont=0;cont<np;cont++)
+  {
+    for (ic=0;ic<np;ic++)
+    {
+        glVertex2f((xv[cont])*tw1/x[nx-1]-lixo,zv[ic]*th1/z[nz-1]-lixo2);
+        glVertex2f((xv[cont+1])*tw1/x[nx-1]-lixo,zv[ic]*th1/z[nz-1]-lixo2);
+    }
+  }
+  glEnd();
+  glBegin(GL_LINES);
+  for (cont=0;cont<np;cont++)
+  {
+    for (ic=0;ic<np;ic++)
+    {
+      glVertex2f((xv[cont])*tw1/x[nx-1]-lixo,zv[ic]*th1/z[nz-1]-lixo2);
+      glVertex2f((xv[cont])*tw1/x[nx-1]-lixo,zv[ic+1]*th1/z[nz-1]-lixo2);
         // printf("%f %f\n",xv[cont]-tw/2,zv[ic]+th/2);
-    }
-  }
-  glEnd();
-  glBegin(GL_LINES);
-  for (cont=0;cont<nx;cont++)
-  {
-    for (ic=0;ic<nz;ic++)
-    {
-      glVertex2f(x[cont]-xn/2,z[ic]-zn/2);
-      if(cont<nx-1)
-      {
-        glVertex2f(x[cont+1]-xn/2,z[ic]-zn/2);
-      }
-    }
-  }
-  glEnd();
-  glBegin(GL_LINES);
-  for (cont=0;cont<nz;cont++)
-  {
-    for (ic=0;ic<nx;ic++)
-    {
-      glVertex2f(x[ic]-xn/2,z[cont]-zn/2);
-      if(cont<nz-1)
-      {
-        glVertex2f(x[ic]-xn/2,z[cont+1]-zn/2);
-      }
     }
   }
   glEnd();
@@ -145,7 +143,7 @@ void DesenhaTexto(char *string)
 {
   glPushMatrix();
   // Posição no universo onde o texto será colocado
-  glRasterPos2f(-win,win-5);
+  glRasterPos2f(-win,win-2);
   glColor3f(1,0,0);
   // Exibe caracter a caracter
   while(*string)
@@ -207,12 +205,12 @@ void Inicializa (void)
 {
   // Define a cor de fundo da janela de visualização como branca
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-  win=51;
   for (i=0;i<np;i++)
   {
     click_xv[i]=0;
     click_zv[i]=0;
   }
+  win=50;
 }
 
 // Função callback chamada quando o tamanho da janela é alterado
@@ -221,13 +219,13 @@ void AlteraTamanhoJanela(GLsizei w, GLsizei h)
   // Especifica as dimensões da Viewport
   GLUI_Master.get_viewport_area ( &tx, &ty, &tw, &th );
   glViewport( tx, ty, tw, th );
+  printf("%i %i\n",tw, th );
   view_w = w;
   view_h = h;
-  printf("%i %i\n",tw,th );
   // Inicializa o sistema de coordenadas
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  gluOrtho2D (-win, win, -win, win);
+  gluOrtho2D (-tw/2, tw/2, -th/2, th/2);
 }
 
 // Função callback chamada para gerenciar eventos do teclado
@@ -257,30 +255,29 @@ if (button==GLUT_LEFT_BUTTON)
   {
     if (state==GLUT_DOWN)
     {
-        for (i=0;i<np;i++)
+        if (click<2)
         {
-          for (j=0;j<np;j++)
+          sprintf(texto,"Digite coordenada %i",click+1);
+          coord[click][0]=x;
+          coord[click][1]=z;
+          printf("%f , %f\n",coord[click][0],coord[click][1]);
+          aux_dist=10000;
+          for (i=0;i<np;i++)
           {
-              if (i==0 && j==0)
+            printf("%i-> %f , %f\n",i, xv[i], zv[i]);
+            dist=sqrt(pow(coord[click][0]-xv[i],2)+pow(coord[click][1]-zv[i],2));
+            if (dist<aux_dist)
               {
-                dist=sqrt(pow((x-xv[i]-win*tw/th+9),2)+pow((z-zv[j]-win*tw/th+9),2));
-                xvp=xv[i];zvp=zv[j];
+                xf=xv[i];
+                zf=zv[i];
+                aux_dist=dist;
               }
-              else
-              {
-                aux_dist=sqrt(pow((x-xv[i]-win*tw/th+9),2)+pow((z-zv[j]-win*tw/th+9),2));
-                if (aux_dist<dist)
-                {
-                  dist=aux_dist;
-                  xvp=xv[i];zvp=zv[j];
-                }
-              }
-              click_xv[i]=1;
-              click_zv[j]=1;
-          }
-      }
-     printf("%f , %f\n",xvp,zvp);
-      sprintf(texto, "(%d , %d)", x, z);
+            }
+          printf("%f , %f\n", xf, zf );
+          printf("%f , %f\n",coord[click][0],coord[click][1]);
+           // printf("%f %f\n",xn/2,zn/2 );
+          click++;
+        }
       // if (prim==1)
       // {
       //   xf = ( (2 * win * x) / view_w) - win;
@@ -291,7 +288,13 @@ if (button==GLUT_LEFT_BUTTON)
       // }
     }
   }
+
   glutPostRedisplay();
+}
+void MoveMouse(int x, int z)
+{
+        sprintf(texto, "(%d , %d)", x, z);
+        glutPostRedisplay();
 }
 /**************************************** main() ********************/
 
@@ -305,18 +308,16 @@ int main(int argc, char* argv[])
   glutInitDisplayMode( GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH );
   glutInitWindowPosition( 50, 50 );
   glutInitWindowSize( 1000, 700 );
-
   main_window = glutCreateWindow( "GLUI Example 5" );
   GLUI_Master.set_glutReshapeFunc( AlteraTamanhoJanela);
   glutDisplayFunc( Desenha );
   //GLUI_Master.set_glutSpecialFunc( TeclasEspeciais);
   GLUI_Master.set_glutMouseFunc( GerenciaMouse );
-
-  printf( "GLUI version: %3.2f\n", GLUI_Master.get_version() );
+  glutPassiveMotionFunc(MoveMouse);
+  printf("GLUI version: %3.2f\n", GLUI_Master.get_version());
 
   /*** Create the side subwindow ***/
-  glui = GLUI_Master.create_glui_subwindow( main_window,
-					    GLUI_SUBWINDOW_RIGHT );
+  glui = GLUI_Master.create_glui_subwindow( main_window,GLUI_SUBWINDOW_RIGHT );
 
   obj_panel = new GLUI_Rollout(glui, "Properties", true );
   GLUI_Spinner *x0_spinner = new GLUI_Spinner(obj_panel,"xi",&x0);
@@ -325,10 +326,10 @@ int main(int argc, char* argv[])
   GLUI_Spinner *xn_spinner = new GLUI_Spinner(obj_panel,"xn",&xn);
   xn_spinner->set_float_limits(0,100);
   xn_spinner->set_alignment( GLUI_ALIGN_RIGHT );
-  GLUI_Spinner *z0_spinner = new GLUI_Spinner(obj_panel,"xi",&z0);
+  GLUI_Spinner *z0_spinner = new GLUI_Spinner(obj_panel,"zi",&z0);
   z0_spinner->set_float_limits(0,100);
   z0_spinner->set_alignment( GLUI_ALIGN_RIGHT );
-GLUI_Spinner *zn_spinner = new GLUI_Spinner(obj_panel,"Zn",&zn);
+GLUI_Spinner *zn_spinner = new GLUI_Spinner(obj_panel,"zn",&zn);
 zn_spinner->set_alignment( GLUI_ALIGN_RIGHT );
 zn_spinner->set_float_limits(0,100);
   GLUI_Spinner *nx_spinner = new GLUI_Spinner(obj_panel,"nx",&nx);
@@ -337,7 +338,7 @@ zn_spinner->set_float_limits(0,100);
 GLUI_Spinner *nz_spinner = new GLUI_Spinner(obj_panel,"nz",&nz);
 nz_spinner->set_alignment( GLUI_ALIGN_RIGHT );
 nz_spinner->set_float_limits(10,50);
-  new GLUI_StaticText( glui, "asd" );
+  new GLUI_StaticText( glui, "" );
 
   /****** A 'quit' button *****/
   new GLUI_Button( glui, "Quit", 0,(GLUI_Update_CB)exit );
